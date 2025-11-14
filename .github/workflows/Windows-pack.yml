@@ -118,6 +118,7 @@ jobs:
           cmake ..  ${{matrix.config.generator}}  `
           -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake"  `
           -DENABLE_OPENSSL=ON `
+          -DENABLE_IMGUR=ON `
           -DCMAKE_BUILD_TYPE=Release  `
           -DRUN_IN_PLACE=${{ contains(matrix.type, 'portable') }}
 
