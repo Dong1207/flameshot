@@ -20,6 +20,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMimeData>
 #include <QNetworkAccessManager>
 #include <QPushButton>
@@ -37,21 +38,43 @@ ImgUploaderBase::ImgUploaderBase(const QPixmap& capture, QWidget* parent)
     setWindowTitle(tr("Upload image"));
     setWindowIcon(QIcon(GlobalValues::iconPath()));
 
+    // Set window flags to stay on top
+#ifdef Q_OS_MACOS
+    // On macOS, need to use different approach for stay on top
+    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Tool);
+    setAttribute(Qt::WA_MacAlwaysShowToolWindow, true);
+#else
+    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window);
+#endif
+
+    // Set fixed height and minimum width for horizontal layout
+    setMinimumWidth(500);
+    setMaximumHeight(80);
+
     QRect position = frameGeometry();
     QScreen* screen = QGuiApplication::screenAt(QCursor::pos());
-    position.moveCenter(screen->availableGeometry().center());
-    move(position.topLeft());
+
+    // Position at top-right corner with some margin
+    int margin = 20; // margin from screen edges
+    QRect screenGeometry = screen->availableGeometry();
+    int x = screenGeometry.right() - position.width() - margin;
+    int y = screenGeometry.top() + margin;
+
+    move(x, y);
 
     m_spinner = new LoadSpinner(this);
     m_spinner->setColor(ConfigHandler().uiColor());
     m_spinner->start();
 
-    m_infoLabel = new QLabel(tr("Uploading Image"));
+    m_infoLabel = new QLabel(tr("Uploading..."));
     m_infoLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     m_infoLabel->setCursor(QCursor(Qt::IBeamCursor));
 
     m_vLayout = new QVBoxLayout();
     setLayout(m_vLayout);
+    // Compact spacing and margins for single-line layout
+    m_vLayout->setSpacing(0);
+    m_vLayout->setContentsMargins(10, 10, 10, 10);
     m_vLayout->addWidget(m_spinner, 0, Qt::AlignHCenter);
     m_vLayout->addWidget(m_infoLabel);
 
@@ -109,50 +132,37 @@ void ImgUploaderBase::startDrag()
 void ImgUploaderBase::showPostUploadDialog()
 {
     m_infoLabel->deleteLater();
+    m_spinner->deleteLater();
 
+    // Create notification widget but don't add to layout yet
     m_notification = new NotificationWidget();
-    m_vLayout->addWidget(m_notification);
 
-    auto* imageLabel = new ImageLabel();
-    imageLabel->setScreenshot(m_pixmap);
-    imageLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    connect(imageLabel,
-            &ImageLabel::dragInitiated,
-            this,
-            &ImgUploaderBase::startDrag);
-    m_vLayout->addWidget(imageLabel);
-
+    // Create horizontal layout for buttons and URL
     m_hLayout = new QHBoxLayout();
+    m_hLayout->setSpacing(8);
     m_vLayout->addLayout(m_hLayout);
 
-    m_copyUrlButton = new QPushButton(tr("Copy URL"));
-    m_openUrlButton = new QPushButton(tr("Open URL"));
-    m_openDeleteUrlButton = new QPushButton(tr("Delete image"));
-    m_toClipboardButton = new QPushButton(tr("Image to Clipboard."));
-    m_saveToFilesystemButton = new QPushButton(tr("Save image"));
+    // Add Open button
+    auto* openButton = new QPushButton(tr("Open"));
+    m_hLayout->addWidget(openButton);
+
+    // Add Copy button
+    m_copyUrlButton = new QPushButton(tr("Copy"));
     m_hLayout->addWidget(m_copyUrlButton);
-    m_hLayout->addWidget(m_openUrlButton);
-    m_hLayout->addWidget(m_openDeleteUrlButton);
-    m_hLayout->addWidget(m_toClipboardButton);
-    m_hLayout->addWidget(m_saveToFilesystemButton);
 
-    connect(
-      m_copyUrlButton, &QPushButton::clicked, this, &ImgUploaderBase::copyURL);
-    connect(
-      m_openUrlButton, &QPushButton::clicked, this, &ImgUploaderBase::openURL);
-    connect(m_openDeleteUrlButton,
-            &QPushButton::clicked,
-            this,
-            &ImgUploaderBase::deleteCurrentImage);
-    connect(m_toClipboardButton,
-            &QPushButton::clicked,
-            this,
-            &ImgUploaderBase::copyImage);
+    // Add URL field (read-only)
+    auto* urlField = new QLineEdit(m_imageURL.toString());
+    urlField->setReadOnly(true);
+    urlField->selectAll();
+    m_hLayout->addWidget(urlField, 1); // stretch factor 1 to take remaining space
 
-    QObject::connect(m_saveToFilesystemButton,
-                     &QPushButton::clicked,
-                     this,
-                     &ImgUploaderBase::saveScreenshotToFilesystem);
+    connect(openButton, &QPushButton::clicked, this, &ImgUploaderBase::openURL);
+    connect(m_copyUrlButton, &QPushButton::clicked, this, &ImgUploaderBase::copyURL);
+
+    // Ensure window stays on top and is activated
+    show();
+    raise();
+    activateWindow();
 }
 
 void ImgUploaderBase::openURL()

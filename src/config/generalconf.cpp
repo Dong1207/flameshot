@@ -61,7 +61,8 @@ GeneralConf::GeneralConf(QWidget* parent)
     initUploadWithoutConfirmation();
     initHistoryConfirmationToDelete();
     initUploadHistoryMax();
-    initUploadClientSecret();
+    // Removed Imgur client ID configuration
+    initCustomUploadSettings();
 #endif
     initPredefinedColorPaletteLarge();
     initShowSelectionGeometry();
@@ -618,31 +619,50 @@ void GeneralConf::initUploadHistoryMax()
     vboxLayout->addWidget(m_uploadHistoryMax);
 }
 
-void GeneralConf::initUploadClientSecret()
+// Removed - no Imgur config needed
+// void GeneralConf::initUploadClientSecret()
+// {
+//     auto* box = new QGroupBox(tr("Imgur Application Client ID"));
+//     ...
+// }
+
+void GeneralConf::initCustomUploadSettings()
 {
-    auto* box = new QGroupBox(tr("Imgur Application Client ID"));
+    auto* box = new QGroupBox(tr("Upload Settings"));
     box->setFlat(true);
     m_layout->addWidget(box);
 
     auto* vboxLayout = new QVBoxLayout();
     box->setLayout(vboxLayout);
 
-    m_uploadClientKey = new QLineEdit(this);
-    QString foreground = this->palette().windowText().color().name();
-    m_uploadClientKey->setStyleSheet(
-      QStringLiteral("color: %1").arg(foreground));
-    m_uploadClientKey->setText(ConfigHandler().uploadClientSecret());
-    connect(m_uploadClientKey,
-            &QLineEdit::editingFinished,
-            this,
-            &GeneralConf::uploadClientKeyEdited);
-    vboxLayout->addWidget(m_uploadClientKey);
+    // Custom URL - the only setting needed
+    auto* urlLayout = new QHBoxLayout();
+    vboxLayout->addLayout(urlLayout);
+
+    auto* urlLabel = new QLabel(tr("Upload URL:"), this);
+    urlLabel->setMinimumWidth(120);
+    urlLayout->addWidget(urlLabel);
+
+    ConfigHandler config;
+    m_customUploadUrl = new QLineEdit(this);
+    m_customUploadUrl->setText(config.customUploadUrl());
+    m_customUploadUrl->setPlaceholderText(tr("http://localhost:4000/api/upload-image"));
+    connect(m_customUploadUrl, &QLineEdit::editingFinished,
+            this, &GeneralConf::onCustomUploadUrlChanged);
+    urlLayout->addWidget(m_customUploadUrl);
+
 }
 
-void GeneralConf::uploadClientKeyEdited()
+void GeneralConf::onCustomUploadUrlChanged()
 {
-    ConfigHandler().setUploadClientSecret(m_uploadClientKey->text());
+    ConfigHandler().setCustomUploadUrl(m_customUploadUrl->text());
 }
+
+// Removed - simplified upload settings
+// void GeneralConf::onCustomUploadMethodChanged(int index)
+// void GeneralConf::onCustomUploadHeadersChanged()
+// void GeneralConf::onCustomUploadFormNameChanged()
+// void GeneralConf::onCustomUploadResponseUrlChanged()
 
 void GeneralConf::uploadHistoryMaxChanged(int max)
 {

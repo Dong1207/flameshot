@@ -160,6 +160,7 @@ set(FLAMESHOT_TS_FILES
       ${CMAKE_SOURCE_DIR}/data/translations/Internationalization_zh_TW.ts
          )
 
+# Only support Qt6
 if (GENERATE_TS)
   qt6_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${FLAMESHOT_TS_FILES})
 else ()
@@ -223,15 +224,15 @@ target_link_libraries(
         flameshot
         project_warnings
         project_options
-        Qt${QT_VERSION_MAJOR}::Svg
-        Qt${QT_VERSION_MAJOR}::Network
-        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt6::Svg
+        Qt6::Network
+        Qt6::Widgets
         QtColorWidgets
 )
 if (UNIX)
 target_link_libraries(
         flameshot
-        Qt${QT_VERSION_MAJOR}::DBus
+        Qt6::DBus
 )
 endif()
 

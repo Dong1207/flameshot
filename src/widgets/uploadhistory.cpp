@@ -71,7 +71,15 @@ void UploadHistory::addLine(const QString& path, const QString& fileName)
     History history;
     HistoryFileName unpackFileName = history.unpackFileName(fileName);
 
-    QString url = ImgUploaderManager(this).url() + unpackFileName.file;
+    QString url;
+    if (unpackFileName.type == "custom") {
+        // For custom uploads, the token contains the base64 encoded URL
+        // Decode it back to the original URL
+        url = QString::fromUtf8(QByteArray::fromBase64(unpackFileName.token.toUtf8()));
+    } else {
+        // For imgur, construct URL from base + file
+        url = ImgUploaderManager(this).url() + unpackFileName.file;
+    }
 
     // load pixmap
     QPixmap pixmap;

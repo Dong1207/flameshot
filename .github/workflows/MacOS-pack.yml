@@ -86,6 +86,12 @@ jobs:
         run: |
           cmake --build "${DIR_BUILD}"
 
+      - name: Fix library dependencies
+        run: |
+          chmod +x packaging/macos/fix_libraries.sh
+          ./packaging/macos/fix_libraries.sh "${DIR_BUILD}/src/flameshot.app"
+          codesign --force --deep --sign - "${DIR_BUILD}/src/flameshot.app"
+
       - name: Build dmg package
         run: |
           cd "${DIR_BUILD}"
