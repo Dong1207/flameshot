@@ -8,6 +8,7 @@
 #include <QDateTime>
 #include <QFileInfo>
 #include <QPixmap>
+#include <QFile>
 
 void scaleThumbnail(QPixmap& pixmap)
 {
@@ -23,8 +24,29 @@ void scaleThumbnail(QPixmap& pixmap)
 
 void clearHistoryLayout(QLayout* layout)
 {
-    while (layout->count() != 0) {
-        delete layout->takeAt(0);
+    if (!layout) {
+        return;
+    }
+
+    int maxIterations = 1000; // Safety limit to prevent infinite loops
+    int iterations = 0;
+
+    while (layout->count() != 0 && iterations < maxIterations) {
+        iterations++;
+
+        QLayoutItem* item = layout->takeAt(0);
+        if (item) {
+            if (item->widget()) {
+                QWidget* widget = item->widget();
+                // Disconnect all signals to prevent crashes during deletion
+                widget->disconnect();
+                // Use deleteLater instead of direct delete to avoid crashes
+                widget->deleteLater();
+            }
+            delete item;
+        } else {
+            break;
+        }
     }
 }
 
@@ -40,17 +62,31 @@ UploadHistory::UploadHistory(QWidget* parent)
 
 void UploadHistory::loadHistory()
 {
-    clearHistoryLayout(ui->historyContainer);
+    try {
+        clearHistoryLayout(ui->historyContainer);
+    } catch (...) {
+        // Continue anyway - try to recover
+    }
 
-    History history = History();
-    QList<QString> historyFiles = history.history();
+    try {
+        History history = History();
+        QList<QString> historyFiles = history.history();
 
-    if (historyFiles.isEmpty()) {
-        setEmptyMessage();
-    } else {
-        for (const auto& fileName : historyFiles) {
-            addLine(history.path(), fileName);
+        if (historyFiles.isEmpty()) {
+            setEmptyMessage();
+        } else {
+            for (const auto& fileName : historyFiles) {
+                try {
+                    addLine(history.path(), fileName);
+                } catch (...) {
+                    // Skip problematic files and continue loading others
+                    continue;
+                }
+            }
         }
+    } catch (...) {
+        // If history loading completely fails, show empty message
+        setEmptyMessage();
     }
 }
 
@@ -68,14 +104,53 @@ void UploadHistory::addLine(const QString& path, const QString& fileName)
 {
     QString fullFileName = path + fileName;
 
-    History history;
-    HistoryFileName unpackFileName = history.unpackFileName(fileName);
+    // Check if file exists
+    if (!QFile::exists(fullFileName)) {
+        // Skip non-existent files
+        return;
+    }
 
-    QString url = ImgUploaderManager(this).url() + unpackFileName.file;
+    History history;
+    HistoryFileName unpackFileName;
+
+    try {
+        unpackFileName = history.unpackFileName(fileName);
+    } catch (...) {
+        // Skip invalid file names
+        return;
+    }
+
+    QString url;
+    if (unpackFileName.type == "custom") {
+        // For custom uploads, the token contains the base64 encoded URL
+        // Decode it back to the original URL
+        try {
+            url = QString::fromUtf8(QByteArray::fromBase64(unpackFileName.token.toUtf8()));
+        } catch (...) {
+            url = tr("Invalid URL");
+        }
+    } else {
+        // For other types, try to get URL from manager
+        try {
+            ImgUploaderManager manager(this);
+            QString baseUrl = manager.url();
+            if (!baseUrl.isEmpty()) {
+                url = baseUrl + unpackFileName.file;
+            } else {
+                url = unpackFileName.file;  // Just use the file name if no base URL
+            }
+        } catch (...) {
+            url = unpackFileName.file;
+        }
+    }
 
     // load pixmap
     QPixmap pixmap;
-    pixmap.load(fullFileName, "png");
+    if (!pixmap.load(fullFileName, "png")) {
+        // If failed to load pixmap, create a placeholder
+        pixmap = QPixmap(100, 100);
+        pixmap.fill(Qt::gray);
+    }
     scaleThumbnail(pixmap);
 
     // get file info
@@ -87,10 +162,9 @@ void UploadHistory::addLine(const QString& path, const QString& fileName)
       this, pixmap, lastModified, url, fullFileName, unpackFileName);
 
     connect(line, &UploadLineItem::requestedDeletion, this, [=, this]() {
-        if (ui->historyContainer->count() <= 1) {
-            setEmptyMessage();
-        }
-        delete line;
+        // Simply reload the entire history after deletion
+        // This is safer and avoids any widget management issues
+        loadHistory();
     });
 
     ui->historyContainer->addWidget(line);

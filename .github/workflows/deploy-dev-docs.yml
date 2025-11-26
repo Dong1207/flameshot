@@ -1,12 +1,14 @@
 name: Deploy developer docs
 
 on:
-  push:
-    branches: [ master, docs ]
-    paths:
-      - 'src/**'
-      - 'docs/dev/**'
-      - '.github/workflows/deploy-dev-docs.yml'
+  # Disabled - uncomment to enable
+  # push:
+  #   branches: [ master, docs ]
+  #   paths:
+  #     - 'src/**'
+  #     - 'docs/dev/**'
+  #     - '.github/workflows/deploy-dev-docs.yml'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:

@@ -11,6 +11,8 @@ History::History()
     ConfigHandler config;
 #ifdef Q_OS_WIN
     m_historyPath = QDir::homePath() + "/AppData/Roaming/flameshot/history/";
+#elif defined(Q_OS_MACOS)
+    m_historyPath = QDir::homePath() + "/Library/Caches/flameshot/history/";
 #else
     QString cachepath = QProcessEnvironment::systemEnvironment().value(
       "XDG_CACHE_HOME", QDir::homePath() + "/.cache");

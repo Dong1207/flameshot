@@ -21,6 +21,7 @@ class ImgUploaderBase : public QWidget
     Q_OBJECT
 public:
     explicit ImgUploaderBase(const QPixmap& capture, QWidget* parent = nullptr);
+    ~ImgUploaderBase();
 
     LoadSpinner* spinner();
 
@@ -49,6 +50,9 @@ private slots:
     void copyImage();
     void deleteCurrentImage();
     void saveScreenshotToFilesystem();
+
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
 
 private:
     QPixmap m_pixmap;

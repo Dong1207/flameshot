@@ -10,8 +10,8 @@ target_sources(flameshot PRIVATE sizedecrease/sizedecreasetool.h sizedecrease/si
 if (ENABLE_IMGUR)
 target_sources(
   flameshot
-        PRIVATE imgupload/storages/imgur/imguruploader.h
-        imgupload/storages/imgur/imguruploader.cpp
+        PRIVATE imgupload/storages/custom/customuploader.h
+        imgupload/storages/custom/customuploader.cpp
         imgupload/storages/imguploaderbase.h
         imgupload/storages/imguploaderbase.cpp
         imgupload/imguploadertool.h

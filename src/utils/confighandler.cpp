@@ -98,18 +98,20 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     OPTION("copyPathAfterSave"           ,Bool               ( false         )),
     OPTION("antialiasingPinZoom"         ,Bool               ( true          )),
     OPTION("useJpgForClipboard"          ,Bool               ( false         )),
-    OPTION("uploadWithoutConfirmation"   ,Bool               ( false         )),
+    OPTION("uploadWithoutConfirmation"   ,Bool               ( true          )),
+    OPTION("customUploadUrl"             ,String             ( ""            )),
     OPTION("saveAfterCopy"               ,Bool               ( false         )),
     OPTION("savePath"                    ,ExistingDir        (               )),
     OPTION("savePathFixed"               ,Bool               ( false         )),
     OPTION("saveAsFileExtension"         ,SaveFileExtension  (               )),
     OPTION("saveLastRegion"              ,Bool               ( false         )),
-    OPTION("uploadHistoryMax"            ,LowerBoundedInt    ( 0, 25         )),
+    OPTION("uploadHistoryMax"            ,LowerBoundedInt    ( 0, 100        )),
     OPTION("undoLimit"                   ,BoundedInt         ( 0, 999, 100   )),
     // Interface tab
     OPTION("uiLanguage"                  ,String             ( "auto"        )),
-    OPTION("uiColor"                     ,Color              ( {116, 0, 150} )),
-    OPTION("contrastUiColor"             ,Color              ( {39, 0, 50}   )),
+    // Branding colors - Change these to customize the app's color theme
+    OPTION("uiColor"                     ,Color              ( {0, 122, 255} )), // Modern blue
+    OPTION("contrastUiColor"             ,Color              ( {0, 64, 128}  )), // Dark blue
     OPTION("contrastOpacity"             ,BoundedInt         ( 0, 255, 190   )),
     OPTION("buttons"                     ,ButtonList         ( {}            )),
     // Filename Editor tab

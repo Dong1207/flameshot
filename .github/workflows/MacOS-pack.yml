@@ -80,11 +80,30 @@ jobs:
       - name: Configure
         run: |
           rm -rf "${DIR_BUILD}"/src/flameshot.dmg "${DIR_BUILD}"/src/flameshot.app/
-          cmake -GNinja -S . -B "${DIR_BUILD}" -DQt6_DIR=$(brew --prefix qt6)/lib/cmake/Qt6 -DUSE_MONOCHROME_ICON=True
+          cmake -GNinja -S . -B "${DIR_BUILD}" -DQt6_DIR=$(brew --prefix qt6)/lib/cmake/Qt6 -DUSE_MONOCHROME_ICON=True -DENABLE_IMGUR=ON
 
       - name: Compile
         run: |
           cmake --build "${DIR_BUILD}"
+
+      - name: Fix library dependencies
+        run: |
+          chmod +x packaging/macos/fix_libraries.sh
+          ./packaging/macos/fix_libraries.sh "${DIR_BUILD}/src/flameshot.app"
+          # Remove all existing signatures to start fresh
+          find "${DIR_BUILD}/src/flameshot.app" -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --remove-signature {} \; 2>/dev/null || true
+          find "${DIR_BUILD}/src/flameshot.app" -type d -name "*.framework" -exec codesign --remove-signature {} \; 2>/dev/null || true
+          # Sign all components in correct order (innermost first)
+          # 1. Sign all dylib files in PlugIns
+          find "${DIR_BUILD}/src/flameshot.app/Contents/PlugIns" -name "*.dylib" -exec codesign --force --sign - {} \; || true
+          # 2. Sign all dylib files in Frameworks
+          find "${DIR_BUILD}/src/flameshot.app/Contents/Frameworks" -name "*.dylib" -exec codesign --force --sign - {} \; || true
+          # 3. Sign all frameworks
+          find "${DIR_BUILD}/src/flameshot.app/Contents/Frameworks" -name "*.framework" -exec codesign --force --sign - {} \; || true
+          # 4. Sign the main executable
+          codesign --force --sign - "${DIR_BUILD}/src/flameshot.app/Contents/MacOS/flameshot" || true
+          # 5. Finally sign the app bundle
+          codesign --force --sign - "${DIR_BUILD}/src/flameshot.app" || true
 
       - name: Build dmg package
         run: |
