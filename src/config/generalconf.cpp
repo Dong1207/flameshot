@@ -60,8 +60,6 @@ GeneralConf::GeneralConf(QWidget* parent)
     initCopyAndCloseAfterUpload();
     initUploadWithoutConfirmation();
     initHistoryConfirmationToDelete();
-    // initUploadHistoryMax();  // Removed - using fixed limit of 100
-    // Removed Imgur client ID configuration
     initCustomUploadSettings();
 #endif
     initPredefinedColorPaletteLarge();
@@ -96,8 +94,6 @@ void GeneralConf::_updateComponents(bool allowEmptySavePath)
     m_copyURLAfterUpload->setChecked(config.copyURLAfterUpload());
     m_historyConfirmationToDelete->setChecked(
       config.historyConfirmationToDelete());
-
-    // m_uploadHistoryMax->setValue(config.uploadHistoryMax());  // Removed - using fixed limit of 100
 #endif
 #if !defined(DISABLE_UPDATE_CHECKER)
     m_checkForUpdates->setChecked(config.checkForUpdates());
@@ -619,13 +615,6 @@ void GeneralConf::initUploadHistoryMax()
     vboxLayout->addWidget(m_uploadHistoryMax);
 }
 
-// Removed - no Imgur config needed
-// void GeneralConf::initUploadClientSecret()
-// {
-//     auto* box = new QGroupBox(tr("Imgur Application Client ID"));
-//     ...
-// }
-
 void GeneralConf::initCustomUploadSettings()
 {
     auto* box = new QGroupBox(tr("Upload Settings"));
@@ -657,12 +646,6 @@ void GeneralConf::onCustomUploadUrlChanged()
 {
     ConfigHandler().setCustomUploadUrl(m_customUploadUrl->text());
 }
-
-// Removed - simplified upload settings
-// void GeneralConf::onCustomUploadMethodChanged(int index)
-// void GeneralConf::onCustomUploadHeadersChanged()
-// void GeneralConf::onCustomUploadFormNameChanged()
-// void GeneralConf::onCustomUploadResponseUrlChanged()
 
 void GeneralConf::uploadHistoryMaxChanged(int max)
 {

@@ -47,12 +47,7 @@ private slots:
     void autostartChanged(bool checked);
     void historyConfirmationToDelete(bool checked);
     void uploadHistoryMaxChanged(int max);
-    // void onUploaderTypeChanged(int index); // Removed - no longer needed
     void onCustomUploadUrlChanged();
-    // void onCustomUploadMethodChanged(int index);  // Removed - simplified
-    // void onCustomUploadHeadersChanged(); // Removed - simplified
-    // void onCustomUploadFormNameChanged(); // Removed - simplified
-    // void onCustomUploadResponseUrlChanged(); // Removed - simplified
     void undoLimit(int limit);
     void saveAfterCopyChanged(bool checked);
     void changeSavePath();
@@ -60,7 +55,6 @@ private slots:
     void exportFileConfiguration();
     void resetConfiguration();
     void togglePathFixed();
-    // void uploadClientKeyEdited(); // Removed - no Imgur config needed
     void useJpgForClipboardChanged(bool checked);
     void setSaveAsFileExtension(const QString& extension);
     void setGeometryLocation(int index);
@@ -101,7 +95,6 @@ private:
     void initUploadWithoutConfirmation();
     void initUseJpgForClipboard();
     void initUploadHistoryMax();
-    // void initUploadClientSecret(); // Removed - no Imgur config needed
     void initCustomUploadSettings();
     void initSaveLastRegion();
     void initShowSelectionGeometry();
@@ -139,14 +132,7 @@ private:
     QPushButton* m_resetButton;
     QCheckBox* m_saveAfterCopy;
     QLineEdit* m_savePath;
-    // QLineEdit* m_uploadClientKey; // Removed - no Imgur config needed
-    // QComboBox* m_uploaderType; // Removed - always use custom
     QLineEdit* m_customUploadUrl;
-    // QComboBox* m_customUploadMethod; // Removed - simplified
-    // QLineEdit* m_customUploadHeaders; // Removed - simplified
-    // QLineEdit* m_customUploadFormName; // Removed - simplified
-    // QLineEdit* m_customUploadResponseUrl; // Removed - simplified
-    // QWidget* m_customUploadWidget; // Removed - simplified
     QPushButton* m_changeSaveButton;
     QCheckBox* m_screenshotPathFixedCheck;
     QCheckBox* m_historyConfirmationToDelete;

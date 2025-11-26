@@ -34,7 +34,7 @@ ImgUploaderBase* ImgUploaderManager::uploader(const QPixmap& capture,
                                               QWidget* parent)
 {
     // Always use CustomUploader
-    m_imgUploaderBase = (ImgUploaderBase*)(new CustomUploader(capture, parent));
+    m_imgUploaderBase = new CustomUploader(capture, parent);
 
     if (m_imgUploaderBase && !capture.isNull()) {
         m_imgUploaderBase->upload();

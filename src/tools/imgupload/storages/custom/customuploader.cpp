@@ -40,20 +40,14 @@ void CustomUploader::upload()
         return;
     }
 
-    // Log upload start
-    qDebug() << "Starting custom upload to:" << uploadUrl;
-
     // Check if we need to scale down the image (for high-DPI/retina displays)
     QPixmap scaledPixmap = m_pixmap;
     int originalWidth = m_pixmap.width();
     int originalHeight = m_pixmap.height();
 
     // If image is very large (likely from retina display), scale it down
-    const int maxDimension = 2048; // Reduced from 2560 to save more space
+    const int maxDimension = 2048;
     if (originalWidth > maxDimension || originalHeight > maxDimension) {
-        qDebug() << "Original size:" << originalWidth << "x" << originalHeight
-                 << "- scaling down for upload";
-
         // Calculate scale factor to fit within maxDimension while keeping aspect ratio
         double scaleFactor = qMin(
             static_cast<double>(maxDimension) / originalWidth,
@@ -69,8 +63,6 @@ void CustomUploader::upload()
             Qt::KeepAspectRatio,
             Qt::SmoothTransformation
         );
-
-        qDebug() << "Scaled to:" << newWidth << "x" << newHeight;
     }
 
     // Convert pixmap to byte array - try JPEG for large images
@@ -80,34 +72,27 @@ void CustomUploader::upload()
 
     // First try PNG
     scaledPixmap.save(&buffer, "PNG");
-    qDebug() << "Initial PNG size:" << imageData.size() << "bytes";
 
     // Track whether we're using JPEG or PNG
     bool usingJpeg = false;
 
     // If PNG is too large (> 2MB), try JPEG compression
     if (imageData.size() > 2 * 1024 * 1024) {
-        qDebug() << "Image too large, trying JPEG compression...";
         imageData.clear();
         buffer.close();
         buffer.open(QIODevice::WriteOnly);
-        scaledPixmap.save(&buffer, "JPEG", 85); // Reduced from 90% to 85% quality
+        scaledPixmap.save(&buffer, "JPEG", 85);
         usingJpeg = true;
-        qDebug() << "JPEG size:" << imageData.size() << "bytes";
 
         // If still too large, try lower quality
         if (imageData.size() > 4 * 1024 * 1024) {
-            qDebug() << "Still too large, trying lower JPEG quality...";
             imageData.clear();
             buffer.close();
             buffer.open(QIODevice::WriteOnly);
-            scaledPixmap.save(&buffer, "JPEG", 70); // Reduced from 75% to 70% quality
-            qDebug() << "Lower quality JPEG size:" << imageData.size() << "bytes";
+            scaledPixmap.save(&buffer, "JPEG", 70);
 
             // If STILL too large, scale down more and use lower quality
             if (imageData.size() > 8 * 1024 * 1024) {
-                qDebug() << "Still too large, scaling down further...";
-
                 // Scale down to max 1600px
                 const int smallerDimension = 1600;
                 if (scaledPixmap.width() > smallerDimension || scaledPixmap.height() > smallerDimension) {
@@ -125,22 +110,16 @@ void CustomUploader::upload()
                         Qt::KeepAspectRatio,
                         Qt::SmoothTransformation
                     );
-
-                    qDebug() << "Further scaled to:" << newWidth << "x" << newHeight;
                 }
 
                 // Try again with the smaller image at 60% quality
                 imageData.clear();
                 buffer.close();
                 buffer.open(QIODevice::WriteOnly);
-                scaledPixmap.save(&buffer, "JPEG", 60); // 60% quality for very large files
-                qDebug() << "Final JPEG size after further scaling:" << imageData.size() << "bytes";
+                scaledPixmap.save(&buffer, "JPEG", 60);
             }
         }
     }
-
-    qDebug() << "Final image size:" << imageData.size() << "bytes"
-             << "(" << imageData.size() / 1024 << "KB)";
 
     // Warn if still too large even after compression
     if (imageData.size() > 15 * 1024 * 1024) {  // > 15MB
@@ -292,8 +271,6 @@ void CustomUploader::handleUploadResponse()
     // ALWAYS copy URL to clipboard after successful upload
     // Use FlameshotDaemon for more reliable cross-platform clipboard access
     FlameshotDaemon::copyToClipboard(imageUrl);
-
-    qDebug() << "Custom upload successful! URL:" << imageUrl;
 
     // Save to history
     History history;
