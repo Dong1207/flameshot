@@ -40,18 +40,17 @@ void CustomUploader::upload()
         return;
     }
 
-    // Check if we need to scale down the image (for high-DPI/retina displays)
+    // Scale down to max Full HD (1920x1080) for retina/high-DPI displays
     QPixmap scaledPixmap = m_pixmap;
     int originalWidth = m_pixmap.width();
     int originalHeight = m_pixmap.height();
 
-    // If image is very large (likely from retina display), scale it down
-    const int maxDimension = 2048;
-    if (originalWidth > maxDimension || originalHeight > maxDimension) {
-        // Calculate scale factor to fit within maxDimension while keeping aspect ratio
+    const int maxWidth = 1920;
+    const int maxHeight = 1080;
+    if (originalWidth > maxWidth || originalHeight > maxHeight) {
         double scaleFactor = qMin(
-            static_cast<double>(maxDimension) / originalWidth,
-            static_cast<double>(maxDimension) / originalHeight
+            static_cast<double>(maxWidth) / originalWidth,
+            static_cast<double>(maxHeight) / originalHeight
         );
 
         int newWidth = static_cast<int>(originalWidth * scaleFactor);
@@ -91,28 +90,8 @@ void CustomUploader::upload()
             buffer.open(QIODevice::WriteOnly);
             scaledPixmap.save(&buffer, "JPEG", 70);
 
-            // If STILL too large, scale down more and use lower quality
+            // If STILL too large, use even lower quality
             if (imageData.size() > 8 * 1024 * 1024) {
-                // Scale down to max 1600px
-                const int smallerDimension = 1600;
-                if (scaledPixmap.width() > smallerDimension || scaledPixmap.height() > smallerDimension) {
-                    double scaleFactor = qMin(
-                        static_cast<double>(smallerDimension) / scaledPixmap.width(),
-                        static_cast<double>(smallerDimension) / scaledPixmap.height()
-                    );
-
-                    int newWidth = static_cast<int>(scaledPixmap.width() * scaleFactor);
-                    int newHeight = static_cast<int>(scaledPixmap.height() * scaleFactor);
-
-                    scaledPixmap = scaledPixmap.scaled(
-                        newWidth,
-                        newHeight,
-                        Qt::KeepAspectRatio,
-                        Qt::SmoothTransformation
-                    );
-                }
-
-                // Try again with the smaller image at 60% quality
                 imageData.clear();
                 buffer.close();
                 buffer.open(QIODevice::WriteOnly);
