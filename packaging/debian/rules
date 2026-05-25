@@ -21,7 +21,8 @@ override_dh_auto_configure:
 	mkdir .git || true
 	# This is required to use Cmake FetchContent
 	dh_auto_configure -- \
-		-DFETCHCONTENT_FULLY_DISCONNECTED=OFF
+		-DFETCHCONTENT_FULLY_DISCONNECTED=OFF \
+		-DENABLE_IMGUR=ON
 
 override_dh_auto_install:
 	dh_auto_install
