@@ -27,6 +27,7 @@ env:
   DOCKER_REPO: quay.io/flameshot-org/ci-building
   # building tool: https://github.com/flameshot-org/packpack
   PACKPACK_REPO: flameshot-org/packpack
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deb-pack:
