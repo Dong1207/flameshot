@@ -3,12 +3,12 @@
 //
 
 #include "imguploadermanager.h"
+// Only using custom uploader
+#include "src/utils/confighandler.h"
+#include "storages/custom/customuploader.h"
+
 #include <QPixmap>
 #include <QWidget>
-
-// Only using custom uploader
-#include "storages/custom/customuploader.h"
-#include "src/utils/confighandler.h"
 
 ImgUploaderManager::ImgUploaderManager(QObject* parent)
   : QObject(parent)

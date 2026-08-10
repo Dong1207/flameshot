@@ -11,15 +11,15 @@
 
 #pragma once
 
-#include "buttonhandler.h"
-#include "capturetoolbutton.h"
-#include "capturetoolobjects.h"
-#include "src/config/generalconf.h"
-#include "src/tools/capturecontext.h"
-#include "src/tools/capturetool.h"
-#include "src/utils/confighandler.h"
-#include "src/widgets/capture/magnifierwidget.h"
-#include "src/widgets/capture/selectionwidget.h"
+#include "tools/capturecontext.h"
+#include "tools/capturetool.h"
+#include "utils/confighandler.h"
+#include "widgets/capture/buttonhandler.h"
+#include "widgets/capture/capturetoolbutton.h"
+#include "widgets/capture/capturetoolobjects.h"
+#include "widgets/capture/magnifierwidget.h"
+#include "widgets/capture/selectionwidget.h"
+
 #include <QMessageBox>
 #include <QPointer>
 #include <QTimer>
@@ -110,6 +110,7 @@ protected:
     void resizeEvent(QResizeEvent* resizeEvent) override;
     void moveEvent(QMoveEvent* moveEvent) override;
     void changeEvent(QEvent* changeEvent) override;
+    void closeEvent(QCloseEvent* event) override;
 
 private:
     void pushObjectsStateToUndoStack();
@@ -229,4 +230,6 @@ private:
     // Grid
     bool m_displayGrid{ false };
     int m_gridSize{ 10 };
+
+    bool m_clipboardWorkaroundDone{ false };
 };
