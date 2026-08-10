@@ -34,6 +34,7 @@ build() {
         -DCMAKE_BUILD_TYPE=None \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DUSE_WAYLAND_CLIPBOARD=1 \
+        -DENABLE_IMGUR=ON \
         -DDISABLE_UPDATE_CHECKER=1 \
 
     cmake --build build

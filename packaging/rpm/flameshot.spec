@@ -84,6 +84,7 @@ cmake -G Ninja -S . -B build \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
     -DCMAKE_BUILD_TYPE=Release \
     -DUSE_WAYLAND_CLIPBOARD=%{wayland_clipboard} \
+    -DENABLE_IMGUR=ON \
     -DBUILD_SHARED_LIBS=OFF
 
 cmake --build build -j $(nproc)
@@ -92,6 +93,7 @@ cmake --build build -j $(nproc)
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
     -DCMAKE_BUILD_TYPE=Release \
     -DUSE_WAYLAND_CLIPBOARD=%{wayland_clipboard} \
+    -DENABLE_IMGUR=ON \
     -DBUILD_SHARED_LIBS=OFF
 
 %cmake_build

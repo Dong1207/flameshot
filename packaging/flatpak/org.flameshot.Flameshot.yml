@@ -24,8 +24,9 @@ modules:
   - name: flameshot
     buildsystem: cmake-ninja
     config-opts:
-      - -DCMAKE_BUILD_TYPE=Release 
+      - -DCMAKE_BUILD_TYPE=Release
       - -DUSE_WAYLAND_CLIPBOARD=1
+      - -DENABLE_IMGUR=ON
     sources:
       - type: git
         url: https://gitlab.com/mattbas/Qt-Color-Widgets.git
@@ -39,7 +40,9 @@ modules:
         dest: external/KDSingleApplication
         
       - type: git
-        url: https://github.com/flameshot-org/flameshot.git
+        # Fork repo: CI ghi đè "branch: master" thành commit đang build, nên URL
+        # phải trỏ về repo này thì flatpak mới chứa code của fork.
+        url: https://github.com/Dong1207/flameshot.git
         branch: master
         # tag: v14.0.0
         # commit: e408812d77ff1835957f85796c4cf737466bd69d
