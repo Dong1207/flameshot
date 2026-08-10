@@ -99,6 +99,8 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
 #endif
     OPTION("uploadWithoutConfirmation"   ,Bool               ( true          )),
     OPTION("customUploadUrl"             ,String             ( ""            )),
+    OPTION("customUploadToken"           ,String             ( ""            )),
+    OPTION("customUploadTokenHeader"     ,String             ( "X-Avada-Token" )),
     OPTION("saveAfterCopy"               ,Bool               ( false         )),
     OPTION("savePath"                    ,ExistingDir        (               )),
     OPTION("savePathFixed"               ,Bool               ( false         )),

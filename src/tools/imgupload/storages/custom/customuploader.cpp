@@ -113,6 +113,13 @@ void CustomUploader::upload()
     request.setRawHeader("User-Agent", "Flameshot/1.0");
     request.setRawHeader("Accept", "*/*");
 
+    // Authentication token, sent verbatim in a user-configurable header
+    const QString token = config.customUploadToken();
+    const QString tokenHeader = config.customUploadTokenHeader().trimmed();
+    if (!token.isEmpty() && !tokenHeader.isEmpty()) {
+        request.setRawHeader(tokenHeader.toUtf8(), token.toUtf8());
+    }
+
     // Always use POST with multipart/form-data and field name "image"
     QHttpMultiPart* multipart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
 
@@ -131,10 +138,11 @@ void CustomUploader::upload()
     QNetworkReply* reply = m_networkManager->post(request, multipart);
     multipart->setParent(reply); // Delete multipart with reply
 
+    // Only listen to finished(): it fires for successes and failures alike and
+    // already reports errors in detail. Also handling errorOccurred() would
+    // consume the reply body first, leaving the server's explanation blank.
     connect(reply, &QNetworkReply::finished,
             this, &CustomUploader::handleUploadResponse);
-    connect(reply, &QNetworkReply::errorOccurred,
-            this, &CustomUploader::handleError);
 
     spinner()->start();
 }
@@ -279,50 +287,6 @@ void CustomUploader::handleUploadResponse()
     reply->deleteLater();
 
     // Don't call close() here - let the dialog handle it
-}
-
-void CustomUploader::handleError(QNetworkReply::NetworkError error)
-{
-    spinner()->stop();
-
-    QNetworkReply* reply = qobject_cast<QNetworkReply*>(sender());
-    if (reply) {
-        // Get detailed error information
-        int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        QString httpReason = reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
-        QByteArray serverResponse = reply->readAll();
-
-        QString errorMsg;
-        if (httpStatus > 0) {
-            errorMsg = tr("Network error %1: HTTP %2 %3\n%4\nServer response: %5")
-                .arg(error)
-                .arg(httpStatus)
-                .arg(httpReason)
-                .arg(reply->errorString())
-                .arg(QString::fromUtf8(serverResponse).left(500));
-        } else {
-            // Network-level error (connection failed, DNS error, etc.)
-            errorMsg = tr("Network error %1: %2\nURL: %3")
-                .arg(error)
-                .arg(reply->errorString())
-                .arg(reply->url().toString());
-        }
-
-        setInfoLabelText(errorMsg);
-
-        // Log to console for debugging
-        qWarning() << "Custom upload network error:" << error;
-        qWarning() << "Error string:" << reply->errorString();
-        qWarning() << "HTTP status:" << httpStatus << httpReason;
-        qWarning() << "URL:" << reply->url().toString();
-        if (!serverResponse.isEmpty()) {
-            qWarning() << "Server response:" << serverResponse;
-        }
-
-        reply->deleteLater();
-    }
-
-    // Don't close - let user see error message
 }
 
 QString CustomUploader::parseImageUrl(const QByteArray& response)

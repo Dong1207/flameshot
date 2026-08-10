@@ -607,7 +607,8 @@ void GeneralConf::initCustomUploadSettings()
     auto* vboxLayout = new QVBoxLayout();
     box->setLayout(vboxLayout);
 
-    // Custom URL - the only setting needed
+    ConfigHandler config;
+
     auto* urlLayout = new QHBoxLayout();
     vboxLayout->addLayout(urlLayout);
 
@@ -615,19 +616,74 @@ void GeneralConf::initCustomUploadSettings()
     urlLabel->setMinimumWidth(120);
     urlLayout->addWidget(urlLabel);
 
-    ConfigHandler config;
     m_customUploadUrl = new QLineEdit(this);
     m_customUploadUrl->setText(config.customUploadUrl());
-    m_customUploadUrl->setPlaceholderText(tr("http://localhost:4000/api/upload-image"));
-    connect(m_customUploadUrl, &QLineEdit::editingFinished,
-            this, &GeneralConf::onCustomUploadUrlChanged);
+    m_customUploadUrl->setPlaceholderText(
+      tr("http://localhost:4000/api/upload-image"));
+    connect(m_customUploadUrl,
+            &QLineEdit::editingFinished,
+            this,
+            &GeneralConf::onCustomUploadUrlChanged);
     urlLayout->addWidget(m_customUploadUrl);
 
+    // Auth token, sent as a request header on every upload
+    auto* tokenLayout = new QHBoxLayout();
+    vboxLayout->addLayout(tokenLayout);
+
+    auto* tokenLabel = new QLabel(tr("Token:"), this);
+    tokenLabel->setMinimumWidth(120);
+    tokenLayout->addWidget(tokenLabel);
+
+    m_customUploadToken = new QLineEdit(this);
+    m_customUploadToken->setText(config.customUploadToken());
+    m_customUploadToken->setEchoMode(QLineEdit::PasswordEchoOnEdit);
+    m_customUploadToken->setPlaceholderText(
+      tr("Leave empty if the server needs no authentication"));
+    connect(m_customUploadToken,
+            &QLineEdit::editingFinished,
+            this,
+            &GeneralConf::onCustomUploadTokenChanged);
+    tokenLayout->addWidget(m_customUploadToken);
+
+    // Name of the header carrying the token
+    auto* headerLayout = new QHBoxLayout();
+    vboxLayout->addLayout(headerLayout);
+
+    auto* headerLabel = new QLabel(tr("Token header:"), this);
+    headerLabel->setMinimumWidth(120);
+    headerLayout->addWidget(headerLabel);
+
+    m_customUploadTokenHeader = new QLineEdit(this);
+    m_customUploadTokenHeader->setText(config.customUploadTokenHeader());
+    m_customUploadTokenHeader->setPlaceholderText(QStringLiteral("X-Avada-Token"));
+    connect(m_customUploadTokenHeader,
+            &QLineEdit::editingFinished,
+            this,
+            &GeneralConf::onCustomUploadTokenHeaderChanged);
+    headerLayout->addWidget(m_customUploadTokenHeader);
+
+    auto* hint = new QLabel(
+      tr("The token is sent verbatim in this header. For a Bearer API, set the "
+         "header to \"Authorization\" and the token to \"Bearer <your token>\"."),
+      this);
+    hint->setWordWrap(true);
+    vboxLayout->addWidget(hint);
 }
 
 void GeneralConf::onCustomUploadUrlChanged()
 {
     ConfigHandler().setCustomUploadUrl(m_customUploadUrl->text());
+}
+
+void GeneralConf::onCustomUploadTokenChanged()
+{
+    ConfigHandler().setCustomUploadToken(m_customUploadToken->text());
+}
+
+void GeneralConf::onCustomUploadTokenHeaderChanged()
+{
+    ConfigHandler().setCustomUploadTokenHeader(
+      m_customUploadTokenHeader->text().trimmed());
 }
 
 void GeneralConf::uploadHistoryMaxChanged(int max)

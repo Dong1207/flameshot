@@ -47,6 +47,8 @@ private slots:
     void historyConfirmationToDelete(bool checked);
     void uploadHistoryMaxChanged(int max);
     void onCustomUploadUrlChanged();
+    void onCustomUploadTokenChanged();
+    void onCustomUploadTokenHeaderChanged();
     void undoLimit(int limit);
     void saveAfterCopyChanged(bool checked);
     void changeSavePath();
@@ -148,6 +150,8 @@ private:
     QCheckBox* m_saveAfterCopy;
     QLineEdit* m_savePath;
     QLineEdit* m_customUploadUrl;
+    QLineEdit* m_customUploadToken;
+    QLineEdit* m_customUploadTokenHeader;
     QPushButton* m_changeSaveButton;
     QCheckBox* m_screenshotPathFixedCheck;
     QCheckBox* m_historyConfirmationToDelete;

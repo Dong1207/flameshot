@@ -23,7 +23,6 @@ public:
 
 private slots:
     void handleUploadResponse();
-    void handleError(QNetworkReply::NetworkError error);
 
 private:
     QString parseImageUrl(const QByteArray& response);
