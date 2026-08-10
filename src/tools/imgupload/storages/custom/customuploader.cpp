@@ -2,13 +2,13 @@
 // SPDX-FileCopyrightText: 2025 Flameshot Contributors
 
 #include "customuploader.h"
-#include "src/core/flameshotdaemon.h"
-#include "src/utils/confighandler.h"
-#include "src/utils/globalvalues.h"
-#include "src/utils/history.h"
-#include "src/widgets/uploadhistory.h"
-#include "src/widgets/loadspinner.h"
-#include "src/widgets/notificationwidget.h"
+#include "core/flameshotdaemon.h"
+#include "utils/confighandler.h"
+#include "utils/globalvalues.h"
+#include "utils/history.h"
+#include "widgets/uploadhistory.h"
+#include "widgets/loadspinner.h"
+#include "widgets/notificationwidget.h"
 #include <QBuffer>
 #include <QClipboard>
 #include <QDateTime>

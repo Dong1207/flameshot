@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "src/tools/imgupload/storages/imguploaderbase.h"
+#include "tools/imgupload/storages/imguploaderbase.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>

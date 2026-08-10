@@ -4,8 +4,8 @@
 
 #include "imguploadermanager.h"
 // Only using custom uploader
-#include "src/utils/confighandler.h"
-#include "storages/custom/customuploader.h"
+#include "utils/confighandler.h"
+#include "tools/imgupload/storages/custom/customuploader.h"
 
 #include <QPixmap>
 #include <QWidget>
