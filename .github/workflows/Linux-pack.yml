@@ -386,7 +386,7 @@ jobs:
           mkdir -p ${APPIMAGE_DST_PATH}
 
           cd $GITHUB_WORKSPACE
-          cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr -DUSE_LAUNCHER_ABSOLUTE_PATH:BOOL=OFF
+          cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr -DUSE_LAUNCHER_ABSOLUTE_PATH:BOOL=OFF -DENABLE_IMGUR=ON
           make -j$(nproc) DESTDIR=${APPIMAGE_DST_PATH} install
           rm -rf ${APPIMAGE_DST_PATH}/usr/include
           rm -rf ${APPIMAGE_DST_PATH}/usr/lib
