@@ -76,6 +76,27 @@ constexpr const char* visibleInDockProperty = "_visibleInDock";
 #include <QScreen>
 #endif
 
+namespace {
+/**
+ * Put an already-open window back in front of whatever is covering it.
+ *
+ * show() on its own does not front a window while another application holds
+ * the focus — and that is always the situation here, because these windows are
+ * reached from the tray menu, i.e. from outside the app.
+ */
+void bringToFront(QWidget* window)
+{
+    if (window == nullptr) {
+        return;
+    }
+    window->setWindowState((window->windowState() & ~Qt::WindowMinimized) |
+                           Qt::WindowActive);
+    window->show();
+    window->raise();
+    window->activateWindow();
+}
+} // namespace
+
 Flameshot::Flameshot()
   : m_haveExternalWidget(false)
   , m_captureWindow(nullptr)
@@ -267,7 +288,7 @@ void Flameshot::launcher()
     if (m_launcherWindow == nullptr) {
         m_launcherWindow = new CaptureLauncher();
     }
-    m_launcherWindow->show();
+    bringToFront(m_launcherWindow);
 #if defined(Q_OS_MACOS)
     showDockIcon(m_launcherWindow);
 #endif
@@ -292,6 +313,11 @@ void Flameshot::config()
         showDockIcon(m_configWindow);
 #endif
     }
+
+    // Outside the branch on purpose. Choosing the menu entry while the window
+    // was already open used to run nothing at all, so a Configuration window
+    // sitting behind the browser stayed there and the click looked dead.
+    bringToFront(m_configWindow);
 }
 
 void Flameshot::info()
@@ -302,6 +328,8 @@ void Flameshot::info()
         showDockIcon(m_infoWindow);
 #endif
     }
+
+    bringToFront(m_infoWindow);
 }
 
 #ifdef ENABLE_IMGUR
@@ -323,6 +351,7 @@ void Flameshot::history()
     QScreen* currentScreen = QGuiAppCurrentScreen().currentScreen();
     position.moveCenter(currentScreen->availableGeometry().center());
     historyWidget->move(position.topLeft());
+    bringToFront(historyWidget);
 
 #if defined(Q_OS_MACOS)
     showDockIcon(historyWidget);
