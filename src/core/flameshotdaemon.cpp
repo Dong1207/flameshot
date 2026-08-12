@@ -45,6 +45,113 @@
 #include "core/globalshortcutfilter.h"
 #endif
 
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
+#include <QTimer>
+#include <QWidget>
+#include <QWindow>
+
+namespace {
+
+constexpr int kBorrowedFocusTimeoutMs = 500;
+
+bool isWaylandSession()
+{
+    return QGuiApplication::platformName().startsWith(QLatin1String("wayland"));
+}
+
+/**
+ * @brief Owns the selection from a process that has no window of its own.
+ *
+ * A Wayland compositor only accepts wl_data_device.set_selection when it comes
+ * with the serial of an input event the client actually received — that is,
+ * while the client holds focus. The daemon usually has no window at all, so
+ * QClipboard::setText() reports success and copies nothing.
+ *
+ * KSystemClipboard sidesteps focus entirely by going through data-control, but
+ * GNOME declines to implement that protocol and Ubuntu 24.04 has no KF6 at
+ * all. Where either is true, KSystemClipboard quietly degrades to wrapping
+ * QClipboard and we are back where we started.
+ *
+ * What is left is the trick wl-copy uses: map a 1x1 transparent window, take
+ * focus, set the selection, then drop the window. The selection belongs to the
+ * seat rather than to the surface, so it survives the window going away — the
+ * process itself must stay alive to serve the data, which the daemon does.
+ */
+class BorrowedFocusClipboard : public QWidget
+{
+public:
+    static void setText(const QString& text)
+    {
+        // Deletes itself once the selection is placed; nothing to hold on to.
+        new BorrowedFocusClipboard(text);
+    }
+
+private:
+    explicit BorrowedFocusClipboard(QString text)
+      : QWidget(nullptr,
+                Qt::Window | Qt::FramelessWindowHint |
+                  Qt::WindowStaysOnTopHint)
+      , m_text(std::move(text))
+    {
+        setAttribute(Qt::WA_TranslucentBackground);
+        resize(1, 1);
+        show();
+        activateWindow();
+
+        if (QWindow* handle = windowHandle()) {
+            connect(handle, &QWindow::activeChanged, this, [this, handle]() {
+                if (handle->isActive()) {
+                    commit();
+                }
+            });
+        }
+
+        // Some compositors never hand focus to this window; wl-clipboard
+        // documents the same failure and it shows up as a hang. Try once when
+        // the deadline passes and then get out of the way — a lost clipboard
+        // beats a daemon stuck holding an invisible window.
+        QTimer::singleShot(
+          kBorrowedFocusTimeoutMs, this, [this]() { commit(); });
+    }
+
+    void commit()
+    {
+        if (m_committed) {
+            return;
+        }
+        m_committed = true;
+
+        QClipboard* clipboard = QApplication::clipboard();
+        clipboard->blockSignals(true);
+        clipboard->setText(m_text);
+        clipboard->blockSignals(false);
+
+        hide();
+        deleteLater();
+    }
+
+    QString m_text;
+    bool m_committed = false;
+};
+
+#if defined(USE_WAYLAND_CLIPBOARD)
+/**
+ * KSystemClipboard falls back to its QtClipboard class — a thin wrapper over
+ * QClipboard, focus requirement and all — when the compositor offers neither
+ * ext-data-control nor wlr-data-control. There is no public way to ask, so the
+ * class name is the only signal available.
+ */
+bool systemClipboardNeedsFocus()
+{
+    KSystemClipboard* clipboard = KSystemClipboard::instance();
+    return clipboard == nullptr ||
+           qstrcmp(clipboard->metaObject()->className(), "QtClipboard") == 0;
+}
+#endif
+
+} // namespace
+#endif
+
 /**
  * @brief A way of accessing the flameshot daemon both from the daemon itself,
  * and from subcommands.
@@ -364,20 +471,27 @@ void FlameshotDaemon::attachTextToClipboard(const QString& text,
     // windows for some reason
     m_clipboardSignalBlocked = true;
 
-#if defined(USE_WAYLAND_CLIPBOARD)
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
     // On Wayland a client may only own the selection through a seat it holds
     // focus on, and this daemon normally has no window at all. QClipboard::
     // setText() reports success there and copies nothing — which is exactly
-    // how "Copy did nothing" looks from the outside. KSystemClipboard goes
-    // through the data-control protocol instead, which needs no focus.
+    // how "Copy did nothing" looks from the outside.
     //
-    // The image path in screenshotsaver.cpp has had this treatment for a
-    // while; the text path never did, so copying an upload URL stayed broken.
-    if (QGuiApplication::platformName() == QLatin1String("wayland")) {
-        auto* mimeData = new QMimeData;
-        mimeData->setText(text);
-        KSystemClipboard::instance()->setMimeData(mimeData,
-                                                  QClipboard::Clipboard);
+    // The image path in screenshotsaver.cpp has gone through KSystemClipboard
+    // for a while; the text path never did, so copying an upload URL stayed
+    // broken wherever data-control exists, and broken by a second route
+    // wherever it does not.
+    if (isWaylandSession()) {
+#if defined(USE_WAYLAND_CLIPBOARD)
+        if (!systemClipboardNeedsFocus()) {
+            auto* mimeData = new QMimeData;
+            mimeData->setText(text);
+            KSystemClipboard::instance()->setMimeData(mimeData,
+                                                      QClipboard::Clipboard);
+            return;
+        }
+#endif
+        BorrowedFocusClipboard::setText(text);
         return;
     }
 #endif
