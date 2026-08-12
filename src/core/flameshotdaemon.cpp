@@ -8,9 +8,15 @@
 #include "widgets/capture/capturewidget.h"
 #include "widgets/trayicon.h"
 
+#if defined(USE_WAYLAND_CLIPBOARD)
+#include <KSystemClipboard>
+#endif
+
 #include <QApplication>
 #include <QClipboard>
+#include <QGuiApplication>
 #include <QIODevice>
+#include <QMimeData>
 #include <QPixmap>
 #include <QRect>
 
@@ -354,12 +360,30 @@ void FlameshotDaemon::attachTextToClipboard(const QString& text,
     }
 
     m_hostingClipboard = true;
-    QClipboard* clipboard = QApplication::clipboard();
-
-    clipboard->blockSignals(true);
     // This variable is necessary because the signal doesn't get blocked on
     // windows for some reason
     m_clipboardSignalBlocked = true;
+
+#if defined(USE_WAYLAND_CLIPBOARD)
+    // On Wayland a client may only own the selection through a seat it holds
+    // focus on, and this daemon normally has no window at all. QClipboard::
+    // setText() reports success there and copies nothing — which is exactly
+    // how "Copy did nothing" looks from the outside. KSystemClipboard goes
+    // through the data-control protocol instead, which needs no focus.
+    //
+    // The image path in screenshotsaver.cpp has had this treatment for a
+    // while; the text path never did, so copying an upload URL stayed broken.
+    if (QGuiApplication::platformName() == QLatin1String("wayland")) {
+        auto* mimeData = new QMimeData;
+        mimeData->setText(text);
+        KSystemClipboard::instance()->setMimeData(mimeData,
+                                                  QClipboard::Clipboard);
+        return;
+    }
+#endif
+
+    QClipboard* clipboard = QApplication::clipboard();
+    clipboard->blockSignals(true);
     clipboard->setText(text);
     clipboard->blockSignals(false);
 }

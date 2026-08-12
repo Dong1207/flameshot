@@ -22,6 +22,7 @@ override_dh_auto_configure:
 	# This is required to use Cmake FetchContent
 	dh_auto_configure -- \
 		-DFETCHCONTENT_FULLY_DISCONNECTED=OFF \
+		-DUSE_WAYLAND_CLIPBOARD=ON \
 		-DENABLE_IMGUR=ON
 
 override_dh_auto_install:

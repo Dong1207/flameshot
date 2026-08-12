@@ -11,6 +11,9 @@ Build-Depends:
  qt6-svg-dev (>= 6.2.4~) | libqt6svg6-dev (>= 6.2.4~),
  qt6-l10n-tools (>= 6.2.4~),
  libgl-dev,
+# KSystemClipboard: đường duy nhất đặt được clipboard trên Wayland khi
+# tiến trình không giữ focus, mà daemon thì gần như không bao giờ giữ.
+ libkf6guiaddons-dev,
 Rules-Requires-Root: no
 Standards-Version: 4.7.2
 Homepage: https://flameshot.org/
