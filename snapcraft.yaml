@@ -34,8 +34,10 @@ apps:
 parts:
   flameshot:
     plugin: cmake
-    source: https://github.com/flameshot-org/flameshot.git
-    source-tag: v$SNAPCRAFT_PROJECT_VERSION
+    # Phải build từ chính checkout này. Trỏ sang repo upstream nghĩa là gói
+    # snap phát ra KHÔNG có phần upload tuỳ chỉnh của fork — cài xong không
+    # tải ảnh lên hệ thống Avada được, mà nhìn bên ngoài không khác gì.
+    source: .
     build-packages:
       - libxkbcommon-dev
       - libproxy-dev
