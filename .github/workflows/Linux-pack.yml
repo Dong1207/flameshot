@@ -155,6 +155,15 @@ jobs:
               ;;
           esac
           cp -r $GITHUB_WORKSPACE/packaging/debian $GITHUB_WORKSPACE
+          # libkf6guiaddons-dev vắng mặt trên Ubuntu 24.04 (mới dừng ở KF5,
+          # dựng trên Qt5). Ở đó bỏ hẳn build-dep và debian/rules tự tắt
+          # USE_WAYLAND_CLIPBOARD; clipboard Wayland đi đường mượn focus.
+          if [ "${{ matrix.dist.name }}" != "ubuntu-24.04" ]; then
+            sed -i 's|^#KF6_BUILD_DEP$| libkf6guiaddons-dev,|' \
+              $GITHUB_WORKSPACE/debian/control
+            grep -q '^ libkf6guiaddons-dev,$' $GITHUB_WORKSPACE/debian/control \
+              || { echo "không chèn được build-dep KF6"; exit 1; }
+          fi
           bash $GITHUB_WORKSPACE/tools/packpack
           mv $GITHUB_WORKSPACE/build/${PRODUCT}_${VERSION}-${RELEASE}_${{ matrix.dist.arch }}.deb $GITHUB_WORKSPACE/build/${PRODUCT}-${VERSION}-${RELEASE}.${{ matrix.dist.name }}.${{ matrix.dist.arch }}.deb
 

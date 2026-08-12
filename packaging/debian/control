@@ -11,12 +11,15 @@ Build-Depends:
  qt6-svg-dev (>= 6.2.4~) | libqt6svg6-dev (>= 6.2.4~),
  qt6-l10n-tools (>= 6.2.4~),
  libgl-dev,
-# KSystemClipboard: đường duy nhất đặt được clipboard trên Wayland khi
-# tiến trình không giữ focus, mà daemon thì gần như không bao giờ giữ.
-# Ubuntu 24.04 chỉ có bản KF5 nên gói này vắng mặt hẳn; vế sau là gói đã nằm
-# sẵn trong danh sách, chỉ để apt vẫn giải được phụ thuộc ở đó. debian/rules
-# tự dò và tắt USE_WAYLAND_CLIPBOARD khi không tìm thấy KF6.
- libkf6guiaddons-dev | libgl-dev,
+# KSystemClipboard đặt được clipboard trên Wayland mà không cần giữ focus,
+# nên không phải mượn focus bằng cửa sổ ẩn như flameshotdaemon.cpp vẫn làm khi
+# thiếu nó. Gói này chỉ có từ Ubuntu 26.04 / Debian 13; Ubuntu 24.04 mới dừng ở
+# KF5 dựng trên Qt5, không nạp chung tiến trình Qt6 được.
+#
+# Viết thẳng vào đây thì bản 24.04 hỏng, mà viết dạng "A | B" thì apt thấy B đã
+# cài sẵn nên bỏ qua A ở mọi nơi — cờ tắt lặng lẽ. Linux-pack.yml thay dòng
+# đánh dấu dưới đây cho những bản phân phối thực sự có KF6.
+#KF6_BUILD_DEP
 Rules-Requires-Root: no
 Standards-Version: 4.7.2
 Homepage: https://flameshot.org/
