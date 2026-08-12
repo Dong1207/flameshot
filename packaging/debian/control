@@ -13,7 +13,10 @@ Build-Depends:
  libgl-dev,
 # KSystemClipboard: đường duy nhất đặt được clipboard trên Wayland khi
 # tiến trình không giữ focus, mà daemon thì gần như không bao giờ giữ.
- libkf6guiaddons-dev,
+# Ubuntu 24.04 chỉ có bản KF5 nên gói này vắng mặt hẳn; vế sau là gói đã nằm
+# sẵn trong danh sách, chỉ để apt vẫn giải được phụ thuộc ở đó. debian/rules
+# tự dò và tắt USE_WAYLAND_CLIPBOARD khi không tìm thấy KF6.
+ libkf6guiaddons-dev | libgl-dev,
 Rules-Requires-Root: no
 Standards-Version: 4.7.2
 Homepage: https://flameshot.org/
@@ -26,6 +29,10 @@ Architecture: any
 # ${shlibs:Depends},
 Depends:
  ${misc:Depends},
+# libKF6GuiAddons.so.6 là DT_NEEDED cứng khi build có KSystemClipboard. Vì
+# ${shlibs:Depends} đang tắt, không khai ở đây thì gói cài xong vẫn không chạy
+# nổi. debian/rules bơm giá trị, để rỗng ở bản build không có KF6.
+ ${kf6:Depends},
  libc6 (>= 2.35),
  libgcc-s1 (>= 11),
  libstdc++6 (>= 11),

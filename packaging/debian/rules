@@ -13,8 +13,27 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 # package maintainers to append LDFLAGS
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
+# KF6GuiAddons chỉ có từ Ubuntu 26.04 / Debian 13 trở đi — Ubuntu 24.04 mới
+# dừng ở KF5. Dò đúng file mà find_package(KF6GuiAddons) sẽ tìm, thay vì đoán
+# theo tên bản phân phối.
+KF6_GUIADDONS := $(firstword $(wildcard /usr/lib/*/cmake/KF6GuiAddons/KF6GuiAddonsConfig.cmake \
+                                        /usr/lib/cmake/KF6GuiAddons/KF6GuiAddonsConfig.cmake))
+ifeq ($(KF6_GUIADDONS),)
+  WAYLAND_CLIPBOARD := OFF
+  KF6_DEPENDS :=
+else
+  WAYLAND_CLIPBOARD := ON
+  # Lấy tên gói runtime từ chính dpkg thay vì viết cứng: viết sai một chữ là
+  # gói không cài được ở đâu cả.
+  KF6_DEPENDS := $(shell dpkg-query -S '*/libKF6GuiAddons.so.6' 2>/dev/null \
+                         | head -1 | cut -d: -f1)
+  ifeq ($(KF6_DEPENDS),)
+    $(error bật USE_WAYLAND_CLIPBOARD nhưng không dò ra gói chứa libKF6GuiAddons.so.6)
+  endif
+endif
+
 %:
-	dh $@ 
+	dh $@
 
 override_dh_auto_configure:
 	# The existence of an empty .git directory triggers syncqt.
@@ -22,8 +41,11 @@ override_dh_auto_configure:
 	# This is required to use Cmake FetchContent
 	dh_auto_configure -- \
 		-DFETCHCONTENT_FULLY_DISCONNECTED=OFF \
-		-DUSE_WAYLAND_CLIPBOARD=ON \
+		-DUSE_WAYLAND_CLIPBOARD=$(WAYLAND_CLIPBOARD) \
 		-DENABLE_IMGUR=ON
+
+override_dh_gencontrol:
+	dh_gencontrol -- -Vkf6:Depends="$(KF6_DEPENDS)"
 
 override_dh_auto_install:
 	dh_auto_install
