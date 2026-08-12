@@ -83,3 +83,9 @@ result-*
 
 # direnv
 .direnv
+
+# Khoá API Apple — không bao giờ commit
+AuthKey_*.p8
+*.p12
+*.key
+.cert/
