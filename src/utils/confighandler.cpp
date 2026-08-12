@@ -13,6 +13,7 @@
 #include <QFileSystemWatcher>
 #include <QKeySequence>
 #include <QMap>
+#include <QRegularExpression>
 #include <QSharedPointer>
 #include <QStandardPaths>
 #include <QVector>
@@ -536,6 +537,43 @@ void ConfigHandler::remove(const QString& key)
 void ConfigHandler::resetValue(const QString& key)
 {
     m_settings.setValue(key, valueHandler(key)->fallback());
+}
+
+/// Every kind of space, including the non-breaking one that web pages leave
+/// behind on a copy and that looks exactly like a normal space in a text field.
+static const QRegularExpression& anyWhitespace()
+{
+    static const QRegularExpression re(
+      QStringLiteral("[\\s\\x{00a0}\\x{200b}\\x{feff}]+"),
+      QRegularExpression::UseUnicodePropertiesOption);
+    return re;
+}
+
+QString ConfigHandler::sanitizeUploadUrl(const QString& raw)
+{
+    // No whitespace is ever valid inside a URL, so drop all of it rather than
+    // only the ends — a stray space in the middle comes from a sloppy
+    // selection just as often as one at the edge.
+    QString url = raw;
+    return url.remove(anyWhitespace());
+}
+
+QString ConfigHandler::sanitizeUploadToken(const QString& raw)
+{
+    // Interior spaces have to survive here: the hint in the settings dialog
+    // tells people to enter "Bearer <token>". Normalise the exotic spaces to
+    // plain ones, collapse runs, then trim.
+    QString token = raw;
+    token.replace(anyWhitespace(), QStringLiteral(" "));
+    return token.trimmed();
+}
+
+QString ConfigHandler::sanitizeHeaderName(const QString& raw)
+{
+    // An HTTP field name admits no whitespace at all, and a newline smuggled
+    // in here would let a pasted value forge extra headers.
+    QString name = raw;
+    return name.remove(anyWhitespace());
 }
 
 QSet<QString>& ConfigHandler::recognizedGeneralOptions()

@@ -184,6 +184,16 @@ public:
     void resetValue(const QString& key);
 
     // INFO
+    /**
+     * Strip the whitespace people pick up when copying these values out of a
+     * browser or a chat message. Applied both when the settings dialog stores
+     * a value and when the uploader reads one, so a config that was already
+     * saved dirty — or edited by hand — heals itself.
+     */
+    static QString sanitizeUploadUrl(const QString& raw);
+    static QString sanitizeUploadToken(const QString& raw);
+    static QString sanitizeHeaderName(const QString& raw);
+
     static QSet<QString>& recognizedGeneralOptions();
     static QSet<QString>& recognizedShortcutNames();
     QSet<QString> keysFromGroup(const QString& group) const;

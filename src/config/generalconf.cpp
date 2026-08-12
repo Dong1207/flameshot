@@ -670,20 +670,31 @@ void GeneralConf::initCustomUploadSettings()
     vboxLayout->addWidget(hint);
 }
 
+// The cleaned value goes back into the field on purpose: storing something
+// different from what is on screen is how you get a bug report saying "I typed
+// it exactly right and it still fails".
 void GeneralConf::onCustomUploadUrlChanged()
 {
-    ConfigHandler().setCustomUploadUrl(m_customUploadUrl->text());
+    const QString url =
+      ConfigHandler::sanitizeUploadUrl(m_customUploadUrl->text());
+    m_customUploadUrl->setText(url);
+    ConfigHandler().setCustomUploadUrl(url);
 }
 
 void GeneralConf::onCustomUploadTokenChanged()
 {
-    ConfigHandler().setCustomUploadToken(m_customUploadToken->text());
+    const QString token =
+      ConfigHandler::sanitizeUploadToken(m_customUploadToken->text());
+    m_customUploadToken->setText(token);
+    ConfigHandler().setCustomUploadToken(token);
 }
 
 void GeneralConf::onCustomUploadTokenHeaderChanged()
 {
-    ConfigHandler().setCustomUploadTokenHeader(
-      m_customUploadTokenHeader->text().trimmed());
+    const QString header =
+      ConfigHandler::sanitizeHeaderName(m_customUploadTokenHeader->text());
+    m_customUploadTokenHeader->setText(header);
+    ConfigHandler().setCustomUploadTokenHeader(header);
 }
 
 void GeneralConf::uploadHistoryMaxChanged(int max)
