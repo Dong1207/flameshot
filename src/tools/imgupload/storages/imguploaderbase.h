@@ -54,22 +54,35 @@ private slots:
 protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
 
+    /// Show @p message to the user. Safe to call before (or without) the
+    /// post-upload dialog — falls back to a tray notification.
+    void notify(const QString& message);
+
 private:
+    /// Is @p w this dialog or something living inside it (child or popup)?
+    bool isOwnWidget(const QWidget* w) const;
+
     QPixmap m_pixmap;
 
-    QVBoxLayout* m_vLayout;
-    QHBoxLayout* m_hLayout;
+    QVBoxLayout* m_vLayout = nullptr;
+    QHBoxLayout* m_hLayout = nullptr;
     // loading
-    QLabel* m_infoLabel;
-    LoadSpinner* m_spinner;
+    QLabel* m_infoLabel = nullptr;
+    LoadSpinner* m_spinner = nullptr;
     // uploaded
-    QPushButton* m_openUrlButton;
-    QPushButton* m_openDeleteUrlButton;
-    QPushButton* m_copyUrlButton;
-    QPushButton* m_toClipboardButton;
-    QPushButton* m_saveToFilesystemButton;
+    QPushButton* m_openUrlButton = nullptr;
+    QPushButton* m_openDeleteUrlButton = nullptr;
+    // Doubles as the "post-upload dialog is up" flag in eventFilter(), so it
+    // must start null — reading it uninitialised is what made the filter run
+    // during the upload phase.
+    QPushButton* m_copyUrlButton = nullptr;
+    QPushButton* m_toClipboardButton = nullptr;
+    QPushButton* m_saveToFilesystemButton = nullptr;
     QUrl m_imageURL;
-    NotificationWidget* m_notification;
+    NotificationWidget* m_notification = nullptr;
+    // Whether the dialog has ever held focus. Guards the close-on-deactivate
+    // path, which fires spuriously when a compositor declines to activate us.
+    bool m_wasActivated = false;
 
 public:
     QString m_currentImageName;

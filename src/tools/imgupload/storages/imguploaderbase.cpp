@@ -3,6 +3,7 @@
 
 #include "imguploaderbase.h"
 #include "core/flameshotdaemon.h"
+#include "utils/abstractlogger.h"
 #include "utils/confighandler.h"
 #include "utils/globalvalues.h"
 #include "utils/history.h"
@@ -32,7 +33,6 @@
 #include <QUrlQuery>
 #include <QVBoxLayout>
 #include <QEvent>
-#include <QMouseEvent>
 
 ImgUploaderBase::ImgUploaderBase(const QPixmap& capture, QWidget* parent)
   : QWidget(parent)
@@ -56,10 +56,18 @@ ImgUploaderBase::ImgUploaderBase(const QPixmap& capture, QWidget* parent)
 
     // Set fixed height and minimum width for horizontal layout
     setMinimumWidth(500);
-    setMaximumHeight(80);
+    // Room for the notification strip (a fixed 40px) on top of the button row;
+    // it stays hidden until there is something to say, so the resting height
+    // is unchanged.
+    setMaximumHeight(130);
 
     QRect position = frameGeometry();
+    // Wayland doesn't hand out a global cursor position, so screenAt() can
+    // come back empty there — dereferencing it would take the whole app down.
     QScreen* screen = QGuiApplication::screenAt(QCursor::pos());
+    if (screen == nullptr) {
+        screen = QGuiApplication::primaryScreen();
+    }
 
     // Position at top-right corner with some margin
     int margin = 20; // margin from screen edges
@@ -96,12 +104,23 @@ ImgUploaderBase::~ImgUploaderBase()
 
 bool ImgUploaderBase::eventFilter(QObject* obj, QEvent* event)
 {
+    if (event->type() == QEvent::WindowActivate && obj == this) {
+        m_wasActivated = true;
+    }
+
     // Only process events after the upload is complete (when buttons are shown)
     if (m_copyUrlButton != nullptr) {
         // Handle focus loss - close when window loses focus (user clicked on another app)
         // Use ApplicationDeactivate for better cross-platform compatibility
-        if (event->type() == QEvent::ApplicationDeactivate ||
-            event->type() == QEvent::WindowDeactivate) {
+        //
+        // Wait for the dialog to have been focused at least once first. A
+        // Wayland client cannot focus itself on demand — activateWindow() only
+        // *asks*, via xdg-activation, and the compositor may refuse. If the
+        // dialog comes up unfocused and a deactivate arrives before the user
+        // reaches it, closing here would take the dialog away while they are
+        // still moving the mouse towards it.
+        if (m_wasActivated && (event->type() == QEvent::ApplicationDeactivate ||
+                               event->type() == QEvent::WindowDeactivate)) {
             // For Windows, we need to check if the event is for our window
             if (obj == this || obj == qApp) {
                 close();
@@ -110,35 +129,55 @@ bool ImgUploaderBase::eventFilter(QObject* obj, QEvent* event)
         }
 
         // Also handle mouse clicks outside the dialog (within the same app)
-        if (event->type() == QEvent::MouseButtonPress) {
-            QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-
-            // Check if click is outside the dialog
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-            QPoint globalPos = mouseEvent->globalPosition().toPoint();
-#else
-            QPoint globalPos = mouseEvent->globalPos();
-#endif
-
-            // Get the global geometry of our window
-            QRect dialogRect = geometry();
-            QPoint dialogGlobalPos = mapToGlobal(QPoint(0, 0));
-            dialogRect.moveTo(dialogGlobalPos);
-
-            // Only close if the click is outside our dialog
-            if (!dialogRect.contains(globalPos) && isVisible()) {
-                // Additional check to make sure the click is not on a child widget
-                QWidget* widget = qApp->widgetAt(globalPos);
-                if (!widget || !isAncestorOf(widget)) {
-                    close();
-                    return true; // Event handled
-                }
+        //
+        // Ask *which widget* the press is headed for rather than comparing
+        // screen coordinates. Wayland gives a client no global coordinate
+        // space: QApplication::widgetAt() returns nullptr there, and a
+        // top-level's mapToGlobal() reports the position we asked for in
+        // move() — which the compositor is free to ignore — not where the
+        // window actually sits. The old geometry test therefore read clicks on
+        // our own Open/Copy buttons as "outside", closed the dialog and
+        // swallowed the press, so neither button ever emitted clicked().
+        if (event->type() == QEvent::MouseButtonPress && isVisible()) {
+            // Mouse presses are filtered twice, once for the QWindow and once
+            // for the QWidget. Only the widget pass can answer the question.
+            auto* target = qobject_cast<QWidget*>(obj);
+            if (target != nullptr && !isOwnWidget(target)) {
+                close();
+                // Don't consume it: the user aimed at another window and
+                // should still land there.
+                return false;
             }
         }
     }
 
     // Pass event to parent
     return QWidget::eventFilter(obj, event);
+}
+
+void ImgUploaderBase::notify(const QString& message)
+{
+    // Deleting an entry from the upload history builds an uploader that never
+    // shows the post-upload dialog, so there is no notification widget to talk
+    // to — that path used to dereference a null pointer and take the app down.
+    if (m_notification == nullptr) {
+        AbstractLogger::info() << message;
+        return;
+    }
+    m_notification->show();
+    m_notification->showMessage(message);
+}
+
+bool ImgUploaderBase::isOwnWidget(const QWidget* w) const
+{
+    // parentWidget() walks through popups too — a context menu opened on the
+    // URL field is parented to it, so it counts as inside the dialog.
+    for (; w != nullptr; w = w->parentWidget()) {
+        if (w == this) {
+            return true;
+        }
+    }
+    return false;
 }
 
 LoadSpinner* ImgUploaderBase::spinner()
@@ -194,8 +233,13 @@ void ImgUploaderBase::showPostUploadDialog()
     m_infoLabel->deleteLater();
     m_spinner->deleteLater();
 
-    // Create notification widget but don't add to layout yet
-    m_notification = new NotificationWidget();
+    // Has to go into the layout: an unparented widget that is never shown
+    // draws nothing, so every showMessage() below was silently discarded and
+    // the widget leaked on top of that. It stays zero-height until it has a
+    // message to animate open.
+    m_notification = new NotificationWidget(this);
+    m_vLayout->addWidget(m_notification);
+    m_notification->hide();
 
     // Create horizontal layout for buttons and URL
     m_hLayout = new QHBoxLayout();
@@ -227,18 +271,20 @@ void ImgUploaderBase::showPostUploadDialog()
 
 void ImgUploaderBase::openURL()
 {
-    bool successful = QDesktopServices::openUrl(m_imageURL);
-    if (!successful) {
-        m_notification->showMessage(tr("Unable to open the URL."));
+    if (!QDesktopServices::openUrl(m_imageURL)) {
+        // Stay open on failure, otherwise the message goes with the dialog and
+        // a browser that never launched is indistinguishable from a dead
+        // button. The URL is still on screen to copy by hand.
+        notify(tr("Unable to open the URL."));
+        return;
     }
-    // Close dialog after opening URL
     close();
 }
 
 void ImgUploaderBase::copyURL()
 {
     FlameshotDaemon::copyToClipboard(m_imageURL.toString());
-    m_notification->showMessage(tr("URL copied to clipboard."));
+    notify(tr("URL copied to clipboard."));
     // Close dialog after copying URL
     close();
 }
@@ -246,7 +292,7 @@ void ImgUploaderBase::copyURL()
 void ImgUploaderBase::copyImage()
 {
     FlameshotDaemon::copyToClipboard(m_pixmap);
-    m_notification->showMessage(tr("Screenshot copied to clipboard."));
+    notify(tr("Screenshot copied to clipboard."));
 }
 
 void ImgUploaderBase::deleteCurrentImage()
@@ -259,9 +305,9 @@ void ImgUploaderBase::deleteCurrentImage()
 void ImgUploaderBase::saveScreenshotToFilesystem()
 {
     if (!saveToFilesystemGUI(m_pixmap)) {
-        m_notification->showMessage(
+        notify(
           tr("Unable to save the screenshot to disk."));
         return;
     }
-    m_notification->showMessage(tr("Screenshot saved."));
+    notify(tr("Screenshot saved."));
 }

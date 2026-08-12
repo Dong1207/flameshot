@@ -28,7 +28,8 @@ CustomUploader::CustomUploader(const QPixmap& capture, QWidget* parent)
 void CustomUploader::upload()
 {
     ConfigHandler config;
-    QString uploadUrl = config.customUploadUrl();
+    QString uploadUrl =
+      ConfigHandler::sanitizeUploadUrl(config.customUploadUrl());
 
     if (uploadUrl.isEmpty()) {
         // If no URL configured, show error in the dialog
@@ -114,8 +115,10 @@ void CustomUploader::upload()
     request.setRawHeader("Accept", "*/*");
 
     // Authentication token, sent verbatim in a user-configurable header
-    const QString token = config.customUploadToken();
-    const QString tokenHeader = config.customUploadTokenHeader().trimmed();
+    const QString token =
+      ConfigHandler::sanitizeUploadToken(config.customUploadToken());
+    const QString tokenHeader =
+      ConfigHandler::sanitizeHeaderName(config.customUploadTokenHeader());
     if (!token.isEmpty() && !tokenHeader.isEmpty()) {
         request.setRawHeader(tokenHeader.toUtf8(), token.toUtf8());
     }
@@ -154,7 +157,7 @@ void CustomUploader::deleteImage(const QString& fileName,
     Q_UNUSED(deleteToken)
     // Custom upload doesn't support deletion by default
     // Could be extended to support delete URLs if needed
-    notification()->showMessage(tr("Image deletion is not supported for custom uploads"));
+    notify(tr("Image deletion is not supported for custom uploads"));
 }
 
 void CustomUploader::handleUploadResponse()
