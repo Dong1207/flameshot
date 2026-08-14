@@ -21,7 +21,11 @@ on:
 
 env:
   PRODUCT: flameshot
-  RELEASE: 1
+  # Số hiệu bản đóng gói, tăng khi phát hành lại cùng một FLAMESHOT_VERSION.
+  # Bản 14.0.0-1 đang nằm trên máy người dùng; nếu bản vá clipboard Wayland
+  # cũng mang -1 thì `apt install ./file.deb` báo "already the newest version"
+  # rồi không cài gì cả — đúng người cần bản vá lại là người không nhận được.
+  RELEASE: 2
   # dockerfiles, see https://github.com/flameshot-org/flameshot-dockerfiles
   # docker images, see https://quay.io/repository/flameshot-org/ci-building
   DOCKER_REPO: quay.io/flameshot-org/ci-building
