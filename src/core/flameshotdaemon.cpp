@@ -46,13 +46,16 @@
 #endif
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
+#include <QEnterEvent>
+#include <QMouseEvent>
+#include <QScreen>
 #include <QTimer>
 #include <QWidget>
 #include <QWindow>
 
 namespace {
 
-constexpr int kBorrowedFocusTimeoutMs = 500;
+constexpr int kBorrowedInputTimeoutMs = 3000;
 
 bool isWaylandSession()
 {
@@ -63,55 +66,68 @@ bool isWaylandSession()
  * @brief Owns the selection from a process that has no window of its own.
  *
  * A Wayland compositor only accepts wl_data_device.set_selection when it comes
- * with the serial of an input event the client actually received — that is,
- * while the client holds focus. The daemon usually has no window at all, so
- * QClipboard::setText() reports success and copies nothing.
+ * with the serial of an input event the client actually received. QtWayland
+ * records that serial in exactly four handlers — pointer_enter,
+ * pointer_button, keyboard_key and touch_down — and notably not in
+ * keyboard_enter, where the serial arrives and is dropped with Q_UNUSED. That
+ * is still true as of Qt 6.9, so a newer Qt does not rescue us here.
  *
- * KSystemClipboard sidesteps focus entirely by going through data-control, but
- * GNOME declines to implement that protocol and Ubuntu 24.04 has no KF6 at
- * all. Where either is true, KSystemClipboard quietly degrades to wrapping
- * QClipboard and we are back where we started.
+ * A daemon that has never been pointed at or typed into therefore carries
+ * serial 0, and every set_selection it sends is rejected. QClipboard hides
+ * this completely: ownsClipboard() answers true and text() reads back what was
+ * just written, while the compositor left the selection with its previous
+ * owner. That is exactly how "Copy did nothing" looks from the outside.
  *
- * What is left is the trick wl-copy uses: map a 1x1 transparent window, take
- * focus, set the selection, then drop the window. The selection belongs to the
- * seat rather than to the surface, so it survives the window going away — the
- * process itself must stay alive to serve the data, which the daemon does.
+ * Holding keyboard focus is not sufficient — a focused 1x1 window still leaves
+ * the serial at 0. What does work is covering the whole virtual desktop with a
+ * transparent window: wherever the pointer happens to sit it lands inside,
+ * wl_pointer.enter fires, and only then is there a serial worth sending. The
+ * window is dropped as soon as the selection is placed; the selection belongs
+ * to the seat rather than to the surface so it survives, and the process must
+ * stay alive to serve the data, which the daemon does.
  */
-class BorrowedFocusClipboard : public QWidget
+class BorrowedInputClipboard : public QWidget
 {
 public:
     static void setText(const QString& text)
     {
         // Deletes itself once the selection is placed; nothing to hold on to.
-        new BorrowedFocusClipboard(text);
+        new BorrowedInputClipboard(text);
     }
 
 private:
-    explicit BorrowedFocusClipboard(QString text)
+    explicit BorrowedInputClipboard(QString text)
       : QWidget(nullptr,
                 Qt::Window | Qt::FramelessWindowHint |
                   Qt::WindowStaysOnTopHint)
       , m_text(std::move(text))
     {
         setAttribute(Qt::WA_TranslucentBackground);
-        resize(1, 1);
+        setGeometry(QGuiApplication::primaryScreen()->virtualGeometry());
         show();
         activateWindow();
 
-        if (QWindow* handle = windowHandle()) {
-            connect(handle, &QWindow::activeChanged, this, [this, handle]() {
-                if (handle->isActive()) {
-                    commit();
-                }
-            });
-        }
-
-        // Some compositors never hand focus to this window; wl-clipboard
-        // documents the same failure and it shows up as a hang. Try once when
-        // the deadline passes and then get out of the way — a lost clipboard
-        // beats a daemon stuck holding an invisible window.
+        // Nothing guarantees an input event ever arrives — a seat with no
+        // pointer, or a pointer the compositor is holding in a grab elsewhere.
+        // Take the shot and get out of the way rather than leave an invisible
+        // window sitting over the whole screen swallowing clicks.
         QTimer::singleShot(
-          kBorrowedFocusTimeoutMs, this, [this]() { commit(); });
+          kBorrowedInputTimeoutMs, this, [this]() { commit(); });
+    }
+
+    // Both of these mean QtWayland has just recorded a usable serial: the
+    // pointer crossing into the window, or a press on it. Touch counts too,
+    // reaching us as a synthesised press.
+    void enterEvent(QEnterEvent* event) override
+    {
+        QWidget::enterEvent(event);
+        commit();
+    }
+
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        QWidget::mousePressEvent(event);
+        commit();
     }
 
     void commit()
@@ -472,10 +488,10 @@ void FlameshotDaemon::attachTextToClipboard(const QString& text,
     m_clipboardSignalBlocked = true;
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
-    // On Wayland a client may only own the selection through a seat it holds
-    // focus on, and this daemon normally has no window at all. QClipboard::
-    // setText() reports success there and copies nothing — which is exactly
-    // how "Copy did nothing" looks from the outside.
+    // On Wayland a client may only own the selection by quoting the serial of
+    // an input event it received, and this daemon normally has no window at
+    // all. QClipboard::setText() reports success there and copies nothing —
+    // which is exactly how "Copy did nothing" looks from the outside.
     //
     // The image path in screenshotsaver.cpp has gone through KSystemClipboard
     // for a while; the text path never did, so copying an upload URL stayed
@@ -491,7 +507,7 @@ void FlameshotDaemon::attachTextToClipboard(const QString& text,
             return;
         }
 #endif
-        BorrowedFocusClipboard::setText(text);
+        BorrowedInputClipboard::setText(text);
         return;
     }
 #endif
