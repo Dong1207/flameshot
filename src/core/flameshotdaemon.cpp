@@ -78,13 +78,14 @@ bool isWaylandSession()
  * just written, while the compositor left the selection with its previous
  * owner. That is exactly how "Copy did nothing" looks from the outside.
  *
- * Holding keyboard focus is not sufficient — a focused 1x1 window still leaves
- * the serial at 0. What does work is covering the whole virtual desktop with a
- * transparent window: wherever the pointer happens to sit it lands inside,
- * wl_pointer.enter fires, and only then is there a serial worth sending. The
- * window is dropped as soon as the selection is placed; the selection belongs
- * to the seat rather than to the surface so it survives, and the process must
- * stay alive to serve the data, which the daemon does.
+ * Holding keyboard focus is neither sufficient nor wanted — a focused 1x1
+ * window still leaves the serial at 0. What does work is covering the whole
+ * virtual desktop with a transparent window that takes no focus: wherever the
+ * pointer happens to sit it lands inside, wl_pointer.enter fires, and only
+ * then is there a serial worth sending. The window is dropped as soon as the
+ * selection is placed; the selection belongs to the seat rather than to the
+ * surface so it survives, and the process must stay alive to serve the data,
+ * which the daemon does.
  */
 class BorrowedInputClipboard : public QWidget
 {
@@ -99,13 +100,19 @@ private:
     explicit BorrowedInputClipboard(QString text)
       : QWidget(nullptr,
                 Qt::Window | Qt::FramelessWindowHint |
-                  Qt::WindowStaysOnTopHint)
+                  Qt::WindowStaysOnTopHint | Qt::WindowDoesNotAcceptFocus)
       , m_text(std::move(text))
     {
         setAttribute(Qt::WA_TranslucentBackground);
+        // Taking keyboard focus would be actively harmful: the upload dialog
+        // closes itself on deactivation, and copyURLAfterUpload fires this
+        // while that dialog is coming up. Stealing focus there made the dialog
+        // flash and vanish before anyone could read it. A pointer serial is
+        // all we need, and the pointer crosses in regardless of who holds the
+        // keyboard.
+        setAttribute(Qt::WA_ShowWithoutActivating);
         setGeometry(QGuiApplication::primaryScreen()->virtualGeometry());
         show();
-        activateWindow();
 
         // Nothing guarantees an input event ever arrives — a seat with no
         // pointer, or a pointer the compositor is holding in a grab elsewhere.
