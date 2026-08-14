@@ -55,7 +55,11 @@
 
 namespace {
 
-constexpr int kBorrowedInputTimeoutMs = 3000;
+// The pointer normally crosses in around 130ms, and 600ms is the worst seen on
+// a cold daemon that has never built a window before. Past a second it is not
+// coming: the seat has no pointer, or the compositor is holding it in a grab.
+// Keep this under the dialog's settling window in imguploaderbase.cpp.
+constexpr int kBorrowedInputTimeoutMs = 1000;
 
 bool isWaylandSession()
 {

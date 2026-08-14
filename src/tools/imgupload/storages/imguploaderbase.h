@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <QElapsedTimer>
 #include <QUrl>
 #include <QWidget>
 
@@ -83,6 +84,13 @@ private:
     // Whether the dialog has ever held focus. Guards the close-on-deactivate
     // path, which fires spuriously when a compositor declines to activate us.
     bool m_wasActivated = false;
+    // Started when the Open/Copy row appears, on Wayland only. Deactivations
+    // arriving inside the settling window are not the user walking away — see
+    // eventFilter().
+    QElapsedTimer m_settling;
+    // One deferred re-check is enough; a burst of deactivations should not
+    // queue up a timer each.
+    bool m_settleCheckArmed = false;
 
 public:
     QString m_currentImageName;

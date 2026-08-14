@@ -34,6 +34,13 @@
 #include <QVBoxLayout>
 #include <QEvent>
 
+namespace {
+// How long after the Open/Copy row appears a deactivation is treated as noise
+// rather than as the user leaving. Covers the worst case of the daemon's
+// borrow-the-pointer window, which gives up after one second.
+constexpr int kSettleAfterButtonsMs = 1500;
+} // namespace
+
 ImgUploaderBase::ImgUploaderBase(const QPixmap& capture, QWidget* parent)
   : QWidget(parent)
   , m_pixmap(capture)
@@ -123,6 +130,33 @@ bool ImgUploaderBase::eventFilter(QObject* obj, QEvent* event)
                                event->type() == QEvent::WindowDeactivate)) {
             // For Windows, we need to check if the event is for our window
             if (obj == this || obj == qApp) {
+                // A deactivation arriving in the same breath as the buttons is
+                // not the user walking away — nobody can read a URL and decide
+                // to leave in under a second. On Wayland it is reliably our own
+                // daemon: it has to map a window to own the selection (see
+                // BorrowedInputClipboard), that window takes focus for about a
+                // tenth of a second, and closing here made the dialog vanish
+                // before it could be read at all.
+                //
+                // Deferred rather than discarded, because the user really might
+                // have clicked away in that first second, and swallowing that
+                // would leave an always-on-top dialog sitting there for good.
+                // Once the window has passed, whoever holds focus decides.
+                const qint64 elapsed =
+                  m_settling.isValid() ? m_settling.elapsed() : -1;
+                if (elapsed >= 0 && elapsed < kSettleAfterButtonsMs) {
+                    if (!m_settleCheckArmed) {
+                        m_settleCheckArmed = true;
+                        QTimer::singleShot(kSettleAfterButtonsMs - elapsed,
+                                           this,
+                                           [this]() {
+                                               if (!isActiveWindow()) {
+                                                   close();
+                                               }
+                                           });
+                    }
+                    return false;
+                }
                 close();
                 return false; // Let the event propagate
             }
@@ -230,6 +264,20 @@ void ImgUploaderBase::startDrag()
 
 void ImgUploaderBase::showPostUploadDialog()
 {
+    // Start the clock before anything else: m_copyUrlButton below is what opens
+    // the close-on-deactivate path in eventFilter(), so the settling window has
+    // to already be running by the time that path can fire.
+    //
+    // Only Wayland arms it. It is the one place where our own daemon has to map
+    // a window to take ownership of the selection — see BorrowedInputClipboard
+    // — and that window deactivates us a few tens of milliseconds after these
+    // buttons appear. On X11, macOS and Windows nothing of ours steals focus
+    // here, so a deactivation really is the user leaving and must keep closing
+    // the dialog exactly as before.
+    if (QGuiApplication::platformName().startsWith(QLatin1String("wayland"))) {
+        m_settling.start();
+    }
+
     m_infoLabel->deleteLater();
     m_spinner->deleteLater();
 
